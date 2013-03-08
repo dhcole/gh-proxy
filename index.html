@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8 />
+    <title>GH-Project</title>
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="base64.js"></script>
+    <style>
+    #form {
+      font-family: sans-serif;
+      text-align: left;
+      width: 200px;
+      position: relative; left: 50%;
+      margin-top: 20px; margin-left: -100px;
+      }
+    #form input {
+      margin-bottom: 1em;
+      display: block;
+      }
+    </style>
+    <script>
+    $(function(){
+        window.onhashchange = getPage;
+        $('#submit').click(function(e) {
+            e.preventDefault();
+            username = $("input#user").val();
+            password = $("input#password").val();
+            branch = $('#branch').val();
+            baseurl = 'https://{{user}}:{{password}}@api.github.com/repos/{{account}}/{{repos}}/contents/'
+                .replace(/\{\{(.*?)\}\}/g, function() {
+                    return $('#' + arguments[1]).val();
+                });
+            $('head').append('<base href="' + baseurl + '">');
+            getPage();
+        });
+        $(document).on('click', 'a', function(e) {
+            if ($(this).attr('href').substr(0, 4) !== 'http') {
+                e.preventDefault();
+                window.location.hash = '#' + $(this).attr('href');
+            }
+        });
+        function process(d) {
+            var doc = Base64.decode(d.data.content);
+            // <link>
+            doc = doc.replace(/(<link(?:.*?)href=(?:'|"))(.*?)((?:'|"))/gm, function() {
+                return arguments[1] + get(arguments[2], 'data:text/plain;base64,') + arguments[3];
+            });
+            // <script>
+            doc = doc.replace(/(<script(?:.*?)src=(?:'|"))(.*?)((?:'|"))/gm, function() {
+                return arguments[1] + get(arguments[2], 'data:text/plain;base64,') + arguments[3];
+            });
+            // <img>
+            doc = doc.replace(/(<img(?:.*?)src=(?:'|"))(.*?)((?:'|"))/gm, function() {
+                return img = arguments[1] + get(arguments[2], 'data:image/png;base64,') + arguments[3];
+            });
+            $('body').html(doc);
+        }
+        function getPage(url) {
+            var url = (typeof url === 'string') ? url :
+                      (window.location.hash.length > 1) ? window.location.hash.substr(1) : '/index.html';
+            if (url.charAt(0) === '/') url = url.substr(1);
+            if (url.indexOf('.') === -1) {
+                if (url.substr(url.length - 1) === '/') {
+                    url = url + 'index.html';
+                } else {
+                    url = url + '/index.html';
+                }
+            }
+            $.ajax({
+                type: "GET",
+                url: url,
+                data: { ref: branch },
+                dataType: 'jsonp',
+                async: false,
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Authorization', make_base_auth(username, password));
+                },
+                success: function(d) { process(d); }
+            });
+        }
+        function get(url, type) {
+            var out = '';
+            if (url.substr(0, 4) === 'http') return url;
+            if (url.charAt(0) === '/') url = url.substr(1);
+            $.ajax({
+                type: "GET",
+                url: url,
+                data: { ref: branch },
+                dataType: 'jsonp',
+                async: false,
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Authorization', make_base_auth(username, password));
+                },
+                success: function(d) { out = d.data.content; }
+            });
+            return (out) ? type + out.replace(/(\r\n|\n|\r)/gm,'') : '';
+        }
+        function make_base_auth(user, password) {
+            var tok = user + ':' + password;
+            var hash = Base64.encode(tok);
+            return "Basic " + hash;
+        }
+    });
+    </script>
+</head>
+<body>
+<div id="form">
+    <label>User: <input type="text" id="user" value=""></label>
+    <label>Password: <input type="password" id="password" value=""></label>
+    <label>Account: <input type="text" id="account" value=""></label>
+    <label>Repos: <input type="text" id="repos" value=""></label>
+    <label>Branch: <input type="text" id="branch" value=""></label>
+    <input type="button" id="submit" value="Proxy">
+</div>
+</body>
+</html>
