@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset=utf-8 />
-    <title>GH-Project</title>
+    <title>GH-Proxy</title>
     <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
     <script src="base64.js"></script>
     <style>
@@ -43,11 +43,11 @@
             var doc = Base64.decode(d.data.content);
             // <link>
             doc = doc.replace(/(<link(?:.*?)href=(?:'|"))(.*?)((?:'|"))/gm, function() {
-                return arguments[1] + get(arguments[2], 'data:text/plain;base64,') + arguments[3];
+                return arguments[1] + get(arguments[2], 'data:text/plain;charset=utf-8;base64,') + arguments[3];
             });
             // <script>
             doc = doc.replace(/(<script(?:.*?)src=(?:'|"))(.*?)((?:'|"))/gm, function() {
-                return arguments[1] + get(arguments[2], 'data:text/plain;base64,') + arguments[3];
+                return arguments[1] + get(arguments[2], 'data:text/plain;charset=utf-8;base64,') + arguments[3];
             });
             // <img>
             doc = doc.replace(/(<img(?:.*?)src=(?:'|"))(.*?)((?:'|"))/gm, function() {
